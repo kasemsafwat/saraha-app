@@ -1,5 +1,6 @@
 import connection from "./DB/connection.js";
 import authRoutes from "./modules/auth/auth.controller.js";
+import userRoutes from "./modules/user/user.controller.js";
 
 const bootstrap = (app, express) => {
   app.use(express.json());
@@ -8,6 +9,7 @@ const bootstrap = (app, express) => {
   );
 
   app.use("/auth", authRoutes);
+  app.use("/user", userRoutes);
 
   connection;
 

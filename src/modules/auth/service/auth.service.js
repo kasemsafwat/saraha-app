@@ -1,11 +1,13 @@
+
 import userModel from "../../../DB/models/User.model.js";
 import * as bcrypt from "bcrypt";
 import nodemailer from "nodemailer";
+import sendEmailSaraha from "../../../utlits/sendEmail.js";
+import jwt from 'jsonwebtoken';
 
 
 
-
-const transporter = nodemailer.createTransport({
+/* const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE,
   auth: {
     user: process.env.EMAIL_USER,
@@ -36,6 +38,7 @@ const sendConfirmationEmail = async (userEmail, userName) => {
     return false;
   }
 };
+ */
 
 
 
@@ -65,7 +68,15 @@ export const register = async (req, res) => {
 
       const objectUser = user.toObject();
       delete objectUser.password;
-      res.status(200).json({ message: "Welcome to register page", objectUser });
+      const token = jwt.sign({ email }, process.env.CONFIRM_EMAIL);
+
+      const url = `${req.protocol}://${req.host}:3000${req.baseUrl}/verify/${token}`;
+
+      console.log(url);
+      
+      sendEmailSaraha(objectUser.email,url);
+      
+      res.status(201).json({ message: "Welcome to register page", objectUser });
     
   } catch (error) {
       res.status(500).json({ message: "Server Errore", error:error.message });
@@ -92,8 +103,36 @@ export const login = async (req, res) => {
     }
     const obectUser = user.toObject();
     delete obectUser.password;
-    res.status(200).json({ message: "Welcome to saraha app", obectUser });
+
+    const token = jwt.sign(
+      { id: user._id, isLoggedIn: true },
+      process.env.TOKEN_SECRET_KEY
+    );
+
+    res.status(200).json({ message: "Welcome to saraha app", token });
   } catch (error) {
     res.status(500).json({ message: "Server Errore", error: error.message });
   }
 };
+
+
+export const verify = async (req,res)=>{
+try {
+  
+    const { token } = req.params;
+    const decoded = jwt.verify(token, process.env.CONFIRM_EMAIL);
+    const user = await userModel.findOne({email:decoded.email});
+    if (!user) {
+      return res.status(404).json({message:"Email not found"});      
+    }
+          await userModel.findByIdAndUpdate(
+            user._id,
+            { confirmEmail: true },
+            { new: true }
+          );
+          res.status(200).json({ message: "updated" });
+} catch (error) {
+  res.status(500).json({ message: "Server Errore", error: error.message });
+  
+}
+}
